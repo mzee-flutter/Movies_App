@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:movies/utilities/routes/routes_name.dart';
-
 import 'package:movies/view/movies_category_screen.dart';
 import 'package:movies/view/signup_screen.dart';
 import 'package:movies/view/splash_screen.dart';
