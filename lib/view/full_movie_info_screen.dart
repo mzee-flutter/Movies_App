@@ -203,8 +203,6 @@ class FullMovieInfoScreenState extends State<FullMovieInfoScreen> {
                 height: height),
             MovieProperty('Original Language: ${widget.movie.originalLanguage}',
                 height: height),
-            MovieProperty('Adult: ${widget.movie.adult}', height: height),
-            MovieProperty('Video: ${widget.movie.video}', height: height),
             SizedBox(height: height * 0.01),
             Container(
               height: height * .05,
