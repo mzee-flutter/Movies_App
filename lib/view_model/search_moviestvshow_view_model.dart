@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import '../model/search_moviestvshows_model.dart';
@@ -46,7 +45,7 @@ class SearchMoviesTvShowViewModel with ChangeNotifier {
     }
   }
 
-  ///This is method is used for the dynamic search means
+  ///This method is used for the dynamic search means
   /// that every letter i enter in the text-field it fetch data accordingly
   /// if there is a 300 milliseconds time gap between letter entry
   void dynamicSearch(String title) {
