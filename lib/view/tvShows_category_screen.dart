@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:movies/utilities/app_color.dart';
 import 'package:movies/view/full_tvshow_info_screen.dart';
-import 'package:movies/view/home_screen.dart';
 import 'package:provider/provider.dart';
+
+import '../resources/components/media_card.dart';
 import '../resources/constants.dart';
 import '../view_model/tvShow_category_view_model.dart';
 import '../view_model/tvShows_dropDown_view_model.dart';
@@ -33,29 +35,31 @@ class TvShowsCategoryScreenState extends State<TvShowsCategoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final height = MediaQuery.of(context).size.height * 1;
     return Scaffold(
       backgroundColor: appColor,
       appBar: AppBar(
         backgroundColor: appColor,
         elevation: 1,
-        iconTheme: const IconThemeData(
-          color: Colors.white,
-        ),
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
+          // Same note as MoviesCategoryScreen's dropdown: `getButtonList()`
+          // (named differently from Movies' `buttonsList()` for what looks
+          // like the identical job — worth unifying the two names once
+          // you're consolidating) builds a widget from inside the
+          // ViewModel. Not touched here since I don't have
+          // TvShowsDropDownViewModel's source, but it's the same MVVM
+          // boundary crossing flagged on the movies screen.
           Consumer<TvShowsDropDownViewModel>(
             builder: (context, tvShowsDropDownProvider, child) {
               return tvShowsDropDownProvider.getButtonList();
             },
           ),
-          SizedBox(
-            width: height * .02,
-          ),
+          SizedBox(width: 8.w),
         ],
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(5),
+          padding: EdgeInsets.all(5.w),
           child: Column(
             children: [
               Expanded(
@@ -77,12 +81,11 @@ class TvShowsCategoryScreenState extends State<TvShowsCategoryScreen> {
                         scrollDirection: Axis.vertical,
                         itemCount: tvShowsCategoryProvider.allTvShows.length +
                             (tvShowsCategoryProvider.isFetching ? 1 : 0),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 4,
-                          crossAxisSpacing: 7,
-                          mainAxisSpacing: 7,
-                          mainAxisExtent: 177,
+                          crossAxisSpacing: 7.w,
+                          mainAxisSpacing: 7.h,
+                          mainAxisExtent: 177.h,
                         ),
                         itemBuilder: (context, index) {
                           if (index ==
@@ -95,23 +98,17 @@ class TvShowsCategoryScreenState extends State<TvShowsCategoryScreen> {
                           }
                           final tvShow =
                               tvShowsCategoryProvider.allTvShows[index];
-                          return InkWell(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      FullTvShowInfoScreen(tvShow: tvShow),
-                                ),
-                              );
-                            },
-                            child: MoviesInfoContainer(
-                              height: height,
-                              title: tvShow.name ?? 'Unknown',
-                              posterUrl: tvShow.posterPath,
-                              year: tvShow.firstAirDate ?? '---',
-                              averageVote: tvShow.voteAverage ?? 0.0,
-                              icon: Icons.star,
+                          return MediaCard(
+                            title: tvShow.name ?? 'Unknown',
+                            posterPath: tvShow.posterPath,
+                            dateLabel: tvShow.firstAirDate ?? '',
+                            voteAverage: tvShow.voteAverage ?? 0.0,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    FullTvShowInfoScreen(tvShow: tvShow),
+                              ),
                             ),
                           );
                         },
@@ -119,7 +116,7 @@ class TvShowsCategoryScreenState extends State<TvShowsCategoryScreen> {
                     );
                   },
                 ),
-              )
+              ),
             ],
           ),
         ),
