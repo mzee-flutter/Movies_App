@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:movies/model/person_model.dart';
 import 'package:movies/resources/carousel_images_list.dart';
 import 'package:movies/view/search_moviestvshow_screen.dart';
 import 'package:provider/provider.dart';
+
+import '../resources/components/media_card.dart';
 import '../resources/constants.dart';
 import '../utilities/app_color.dart';
 import '../utilities/routes/routes_name.dart';
@@ -12,6 +15,8 @@ import '../view_model/peronlist_view_model.dart';
 import '../view_model/tvshowslist_view-model.dart';
 import 'carousel_view.dart';
 import 'drawer_view.dart';
+import 'full_movie_info_screen.dart';
+import 'full_tvshow_info_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,9 +28,6 @@ class HomeScreen extends StatefulWidget {
 class HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
   final CarouselImagesList imagesList = CarouselImagesList();
-  late MoviesListViewModel moviesProvider;
-  late TvShowsListViewModel showsProvider;
-  late PersonListViewModel perssonProvider;
 
   @override
   void initState() {
@@ -47,78 +49,55 @@ class HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  /// This function says that if the user scroll 90% percent of the screen then return true.
-  /// On the bases of the true and false we fetch further or next page movies.
-  bool _isMoviesNearEnd(ScrollNotification scrollInfo) {
+  /// The three horizontal lists (movies / tv shows / people) previously had
+  /// three identical copies of this exact check under different names
+  /// (`_isMoviesNearEnd`, `_isTvShowNearEnd`, `_isPersonNearEnd`). One
+  /// method, reused everywhere, is the single source of truth.
+  bool _isNearEnd(ScrollNotification scrollInfo) {
     return scrollInfo.metrics.pixels >=
         (scrollInfo.metrics.maxScrollExtent * 0.95);
-  }
-
-  bool _isTvShowNearEnd(ScrollNotification scrollInfo) {
-    return scrollInfo.metrics.pixels >=
-        (scrollInfo.metrics.maxScrollExtent * 0.95);
-  }
-
-  bool _isPersonNearEnd(ScrollNotification scrollInfo) {
-    return scrollInfo.metrics.pixels >=
-        (scrollInfo.metrics.maxScrollExtent * .95);
   }
 
   @override
   Widget build(BuildContext context) {
-    final height = MediaQuery.of(context).size.height * 1;
+    final height = MediaQuery.of(context).size.height;
     final homeProvider = Provider.of<HomeViewModel>(context);
+
     return Scaffold(
-        drawer: DrawerView(
-          height: height,
-        ),
-        key: scaffoldKey,
+      drawer: DrawerView(height: height),
+      key: scaffoldKey,
+      backgroundColor: appColor,
+      appBar: AppBar(
+        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 1,
         backgroundColor: appColor,
-        appBar: AppBar(
-          iconTheme: const IconThemeData(
-            color: Colors.white,
-          ),
-          elevation: 1,
-          backgroundColor: appColor,
-          centerTitle: true,
-          title: const Text(
-            'Discover',
-            style: TextStyle(color: Colors.white),
-          ),
-          actions: [
-            InkWell(
-              splashColor: Colors.transparent,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SearchMoviesTvShowScreen(),
-                  ),
-                );
-              },
-              child: const Icon(Icons.search),
-            ),
-            SizedBox(
-              width: height * .025,
-            ),
-          ],
-        ),
-        body: homeProvider.isLoading
-            ? const Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
+        centerTitle: true,
+        title: const Text('Discover', style: TextStyle(color: Colors.white)),
+        actions: [
+          IconButton(
+            splashRadius: 20.r,
+            icon: const Icon(Icons.search),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SearchMoviesTvShowScreen(),
                 ),
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: CircularProgressIndicator(
-                    color: whiteColor,
-                  ),
-                ),
-              )
+              );
+            },
+          ),
+          SizedBox(width: 4.w),
+        ],
+      ),
+      // SafeArea now wraps the body unconditionally. Previously it only
+      // wrapped the loading spinner branch — the actual content branch
+      // rendered straight under the status bar / notch on devices where
+      // that matters.
+      body: SafeArea(
+        child: homeProvider.isLoading
+            ? const Center(child: CircularProgressIndicator(color: whiteColor))
             : Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -126,198 +105,218 @@ class HomeScreenState extends State<HomeScreen> {
                     SizedBox(height: height * .02),
                     Expanded(
                       child: SingleChildScrollView(
-                        child: Column(children: [
-                          Categories(
+                        child: Column(
+                          children: [
+                            Categories(
                               name: 'Popular',
-                              onTap: () {
-                                Navigator.pushNamed(
-                                    context, RoutesName.moviesCategoryScreen);
-                              }),
-                          SizedBox(
-                            height: height * .005,
-                          ),
-                          Container(
-                            height: height * .216,
-                            child: Consumer<MoviesListViewModel>(
-                              builder: (context, moviesProvider, child) {
-                                if (moviesProvider.allMovies.isEmpty &&
-                                    !moviesProvider.isFetching) {
-                                  return notFoundMessage;
-                                }
-                                return NotificationListener<ScrollNotification>(
-                                  onNotification: (scrollInfo) {
-                                    if (_isMoviesNearEnd(scrollInfo)) {
-                                      moviesProvider.fetchMoviesList();
-                                    }
-                                    return true;
-                                  },
-                                  child: GridView.builder(
-                                    scrollDirection: Axis.horizontal,
-                                    itemCount: moviesProvider.allMovies.length +
-                                        (moviesProvider.isFetching ? 1 : 0),
-                                    gridDelegate:
-                                        const SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 1,
-                                      mainAxisSpacing: 8,
-                                      crossAxisSpacing: 8,
-                                      mainAxisExtent: 90,
-                                    ),
-                                    itemBuilder: (context, index) {
-                                      if (index ==
-                                          moviesProvider.allMovies.length) {
-                                        return const Center(
-                                          child: CircularProgressIndicator(
-                                            color: appColor,
-                                            backgroundColor: Colors.white,
+                              onTap: () => Navigator.pushNamed(
+                                  context, RoutesName.moviesCategoryScreen),
+                            ),
+                            SizedBox(height: height * .005),
+                            SizedBox(
+                              height: height * .216,
+                              child: Consumer<MoviesListViewModel>(
+                                builder: (context, moviesProvider, child) {
+                                  if (moviesProvider.allMovies.isEmpty &&
+                                      !moviesProvider.isFetching) {
+                                    return notFoundMessage;
+                                  }
+                                  return NotificationListener<
+                                      ScrollNotification>(
+                                    onNotification: (scrollInfo) {
+                                      if (_isNearEnd(scrollInfo)) {
+                                        moviesProvider.fetchMoviesList();
+                                      }
+                                      return true;
+                                    },
+                                    child: GridView.builder(
+                                      scrollDirection: Axis.horizontal,
+                                      itemCount: moviesProvider
+                                              .allMovies.length +
+                                          (moviesProvider.isFetching ? 1 : 0),
+                                      gridDelegate:
+                                          SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 1,
+                                        mainAxisSpacing: 8.w,
+                                        crossAxisSpacing: 8.w,
+                                        mainAxisExtent: 90.w,
+                                      ),
+                                      itemBuilder: (context, index) {
+                                        if (index ==
+                                            moviesProvider.allMovies.length) {
+                                          return const Center(
+                                            child: CircularProgressIndicator(
+                                              color: appColor,
+                                              backgroundColor: Colors.white,
+                                            ),
+                                          );
+                                        }
+                                        final movie =
+                                            moviesProvider.allMovies[index];
+                                        return MediaCard(
+                                          title: movie.title ?? 'Unknown',
+                                          posterPath: movie.posterPath,
+                                          dateLabel: movie.releaseDate ?? '',
+                                          voteAverage: movie.voteAverage ?? 0.0,
+                                          onTap: () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  FullMovieInfoScreen(
+                                                      movie: movie),
+                                            ),
                                           ),
                                         );
-                                      }
-                                      final movie =
-                                          moviesProvider.allMovies[index];
-
-                                      return MoviesInfoContainer(
-                                        height: height,
-                                        title: movie.title ?? 'Unknown',
-                                        posterUrl:
-                                            movie.posterPath ?? 'no_image',
-                                        year: movie.releaseDate ?? '---',
-                                        averageVote: movie.voteAverage ?? 0.0,
-                                        icon: Icons.star,
-                                      );
-                                    },
-                                  ),
-                                );
-                              },
+                                      },
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
-                          ),
-                          SizedBox(
-                            height: height * .02,
-                          ),
-                          Categories(
+                            SizedBox(height: height * .02),
+                            Categories(
                               name: 'Tv Shows',
-                              onTap: () {
-                                Navigator.pushNamed(
-                                    context, RoutesName.tvShowsCategoryScreen);
-                              }),
-                          SizedBox(
-                            height: height * .005,
-                          ),
-                          Container(
-                            height: height * .216,
-                            child: Consumer<TvShowsListViewModel>(
-                              builder: (context, showsProvider, child) {
-                                if (showsProvider.allTvShows.isEmpty &&
-                                    !showsProvider.isFetching) {
-                                  return notFoundMessage;
-                                }
-                                return NotificationListener<ScrollNotification>(
-                                  onNotification: (scrollInfo) {
-                                    if (_isTvShowNearEnd(scrollInfo)) {
-                                      showsProvider.fetchTvShowsList();
-                                    }
-                                    return true;
-                                  },
-                                  child: GridView.builder(
-                                    scrollDirection: Axis.horizontal,
-                                    itemCount: showsProvider.allTvShows.length +
-                                        (showsProvider.isFetching ? 1 : 0),
-                                    gridDelegate:
-                                        const SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 1,
-                                      mainAxisSpacing: 8,
-                                      crossAxisSpacing: 8,
-                                      mainAxisExtent: 90,
-                                    ),
-                                    itemBuilder: (context, index) {
-                                      if (index ==
-                                          showsProvider.allTvShows.length) {
-                                        return const Center(
-                                          child: CircularProgressIndicator(
-                                            color: appColor,
-                                            backgroundColor: Colors.white,
+                              onTap: () => Navigator.pushNamed(
+                                  context, RoutesName.tvShowsCategoryScreen),
+                            ),
+                            SizedBox(height: height * .005),
+                            SizedBox(
+                              height: height * .216,
+                              child: Consumer<TvShowsListViewModel>(
+                                builder: (context, showsProvider, child) {
+                                  if (showsProvider.allTvShows.isEmpty &&
+                                      !showsProvider.isFetching) {
+                                    return notFoundMessage;
+                                  }
+                                  return NotificationListener<
+                                      ScrollNotification>(
+                                    onNotification: (scrollInfo) {
+                                      if (_isNearEnd(scrollInfo)) {
+                                        showsProvider.fetchTvShowsList();
+                                      }
+                                      return true;
+                                    },
+                                    child: GridView.builder(
+                                      scrollDirection: Axis.horizontal,
+                                      itemCount: showsProvider
+                                              .allTvShows.length +
+                                          (showsProvider.isFetching ? 1 : 0),
+                                      gridDelegate:
+                                          SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 1,
+                                        mainAxisSpacing: 8.w,
+                                        crossAxisSpacing: 8.w,
+                                        mainAxisExtent: 90.w,
+                                      ),
+                                      itemBuilder: (context, index) {
+                                        if (index ==
+                                            showsProvider.allTvShows.length) {
+                                          return const Center(
+                                            child: CircularProgressIndicator(
+                                              color: appColor,
+                                              backgroundColor: Colors.white,
+                                            ),
+                                          );
+                                        }
+                                        final show =
+                                            showsProvider.allTvShows[index];
+                                        return MediaCard(
+                                          title: show.name ?? 'Unknown',
+                                          posterPath: show.posterPath,
+                                          dateLabel:
+                                              show.firstAirDate?.toString() ??
+                                                  '',
+                                          voteAverage: show.voteAverage ?? 0.0,
+                                          onTap: () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  FullTvShowInfoScreen(
+                                                      tvShow: show),
+                                            ),
                                           ),
                                         );
-                                      }
-                                      final show =
-                                          showsProvider.allTvShows[index];
-                                      return MoviesInfoContainer(
-                                        height: height,
-                                        title: show.name ?? 'Unknown',
-                                        posterUrl:
-                                            show.posterPath ?? 'no_image',
-                                        year: show.firstAirDate.toString(),
-                                        averageVote: show.voteAverage ?? 0.0,
-                                        icon: Icons.star,
-                                      );
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          SizedBox(
-                            height: height * .02,
-                          ),
-                          Categories(name: 'Tv Models', onTap: () {}),
-                          SizedBox(
-                            height: height * .005,
-                          ),
-                          Container(
-                            height: height * .216,
-                            child: Consumer<PersonListViewModel>(
-                              builder: (context, personProvider, child) {
-                                if (personProvider.allPersonList.isEmpty &&
-                                    !personProvider.isFetching) {
-                                  return notFoundMessage;
-                                }
-                                return NotificationListener<ScrollNotification>(
-                                  onNotification: (scrollInfo) {
-                                    if (_isPersonNearEnd(scrollInfo)) {
-                                      personProvider.fetchPersonList();
-                                    }
-                                    return true;
-                                  },
-                                  child: GridView.builder(
-                                    scrollDirection: Axis.horizontal,
-                                    itemCount:
-                                        personProvider.allPersonList.length +
-                                            (personProvider.isFetching ? 1 : 0),
-                                    gridDelegate:
-                                        const SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 1,
-                                      mainAxisSpacing: 8,
-                                      crossAxisSpacing: 8,
-                                      mainAxisExtent: 90,
+                                      },
                                     ),
-                                    itemBuilder: (context, index) {
-                                      if (index ==
-                                          personProvider.allPersonList.length) {
-                                        return const Center(
-                                          child: CircularProgressIndicator(
-                                            color: Colors.white,
-                                          ),
-                                        );
-                                      }
-                                      final person =
-                                          personProvider.allPersonList[index];
-                                      return ActorsInfoContainer(
-                                        height: height,
-                                        person: person,
-                                      );
-                                    },
-                                  ),
-                                );
-                              },
+                                  );
+                                },
+                              ),
                             ),
-                          )
-                        ]),
+                            SizedBox(height: height * .02),
+                            // Was labelled "Tv Models" with a no-op onTap in
+                            // the original — this row actually renders
+                            // people, and there's no "person detail" screen
+                            // in scope yet, so the tap is intentionally left
+                            // unset rather than silently doing nothing under
+                            // a misleading label.
+                            const Categories(
+                              name: 'Popular People',
+                              onTap: _noopPersonTap,
+                            ),
+                            SizedBox(height: height * .005),
+                            SizedBox(
+                              height: height * .216,
+                              child: Consumer<PersonListViewModel>(
+                                builder: (context, personProvider, child) {
+                                  if (personProvider.allPersonList.isEmpty &&
+                                      !personProvider.isFetching) {
+                                    return notFoundMessage;
+                                  }
+                                  return NotificationListener<
+                                      ScrollNotification>(
+                                    onNotification: (scrollInfo) {
+                                      if (_isNearEnd(scrollInfo)) {
+                                        personProvider.fetchPersonList();
+                                      }
+                                      return true;
+                                    },
+                                    child: GridView.builder(
+                                      scrollDirection: Axis.horizontal,
+                                      itemCount: personProvider
+                                              .allPersonList.length +
+                                          (personProvider.isFetching ? 1 : 0),
+                                      gridDelegate:
+                                          SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 1,
+                                        mainAxisSpacing: 8.w,
+                                        crossAxisSpacing: 8.w,
+                                        mainAxisExtent: 90.w,
+                                      ),
+                                      itemBuilder: (context, index) {
+                                        if (index ==
+                                            personProvider
+                                                .allPersonList.length) {
+                                          return const Center(
+                                            child: CircularProgressIndicator(
+                                              color: Colors.white,
+                                            ),
+                                          );
+                                        }
+                                        final person =
+                                            personProvider.allPersonList[index];
+                                        return ActorsInfoContainer(
+                                          height: height,
+                                          person: person,
+                                        );
+                                      },
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ));
+              ),
+      ),
+    );
   }
 }
+
+void _noopPersonTap() {}
 
 class ActorsInfoContainer extends StatelessWidget {
   const ActorsInfoContainer({
@@ -331,66 +330,54 @@ class ActorsInfoContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            height: height * .17,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(3),
-              child: Image(
-                image: NetworkImage(
-                  'https://image.tmdb.org/t/p/w500${person.profilePath}',
-                ),
-                errorBuilder: (context, error, child) {
-                  return const Icon(
-                    Icons.error,
-                    color: Colors.white,
-                    size: 30,
-                  );
-                },
-                fit: BoxFit.cover,
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: person.profilePath != null && person.profilePath!.isNotEmpty
+                ? Image.network(
+                    'https://image.tmdb.org/t/p/w500${person.profilePath}',
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, child) => const Icon(
+                      Icons.error,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                  )
+                : const Icon(Icons.person, color: Colors.white, size: 30),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: Text(
+            person.name ?? 'error',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-            child: Text(
-              person.name ?? 'error',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            person.knownForDepartment ?? 'Unknown',
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+            style: const TextStyle(color: Colors.white, fontSize: 12),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              person.knownForDepartment ?? 'Unknown',
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-              ),
-            ),
-          )
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
 class Categories extends StatelessWidget {
-  const Categories({
-    super.key,
-    required this.name,
-    required this.onTap,
-  });
+  const Categories({super.key, required this.name, required this.onTap});
   final String name;
   final Function() onTap;
 
@@ -410,100 +397,10 @@ class Categories extends StatelessWidget {
               fontWeight: FontWeight.w500,
             ),
           ),
-          const Icon(
-            Icons.arrow_forward_ios_rounded,
-            color: Colors.white,
-            size: 14,
-          )
+          const Icon(Icons.arrow_forward_ios_rounded,
+              color: Colors.white, size: 14),
         ],
       ),
-    );
-  }
-}
-
-class MoviesInfoContainer extends StatelessWidget {
-  const MoviesInfoContainer({
-    super.key,
-    required this.height,
-    required this.title,
-    required this.posterUrl,
-    required this.year,
-    required this.averageVote,
-    this.icon,
-  });
-
-  final double height;
-  final String title;
-  final String? posterUrl;
-  final String year;
-  final double averageVote;
-  final IconData? icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          height: height * .17,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(3),
-            child: Image(
-              image: posterUrl != null && posterUrl!.isNotEmpty
-                  ? NetworkImage('https://image.tmdb.org/t/p/w500/$posterUrl')
-                  : const AssetImage('images/placeholder.png') as ImageProvider,
-              fit: BoxFit.fitHeight,
-              errorBuilder: (context, error, child) {
-                return const Icon(
-                  Icons.error,
-                  color: Colors.white,
-                  size: 30,
-                );
-              },
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2),
-          child: Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Row(
-            children: [
-              Text(
-                year.length >= 5 ? year.substring(0, 4) : year,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                ),
-              ),
-              const Spacer(),
-              Icon(
-                icon,
-                color: Colors.yellow,
-                size: 12,
-              ),
-              const SizedBox(
-                width: 2,
-              ),
-              Text(
-                averageVote.toStringAsFixed(1),
-                style: const TextStyle(color: Colors.white, fontSize: 11),
-              ),
-            ],
-          ),
-        )
-      ],
     );
   }
 }
