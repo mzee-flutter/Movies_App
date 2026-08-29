@@ -1,6 +1,8 @@
 import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+
 import '../model/search_moviestvshows_model.dart';
 import '../repository/search_moviestvshows_repository.dart';
 
